@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ThumbAI — YouTube Thumbnail Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue: #3b82f6;
+      --blue-dim: rgba(59,130,246,0.15);
+      --green: #c8ff00;
+      --purple: #7c3aed;
+      --white: #ffffff;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background: #060d1f;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* NAV */
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 40px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .nav-logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 26px; letter-spacing: 0.06em;
+    }
+    .nav-logo span { color: var(--blue); }
+    .nav-tag {
+      font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+    }
+
+    /* HERO */
+    .hero {
+      text-align: center;
+      padding: 80px 24px 60px;
+    }
+    .hero h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(60px, 10vw, 120px);
+      line-height: 0.9;
+      letter-spacing: 0.02em;
+    }
+    .hero h1 .t-blue { color: var(--blue); }
+    .hero p {
+      margin-top: 20px;
+      font-size: 15px; color: rgba(255,255,255,0.4);
+      max-width: 440px; margin-left: auto; margin-right: auto;
+      line-height: 1.6;
+    }
+
+    /* FORM */
+    .form-wrap {
+      max-width: 720px; margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+    .form-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+
+    .field { display: flex; flex-direction: column; gap: 8px; }
+    .field label {
+      font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+    }
+    .field input, .field select {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #fff; font-family: 'Inter', sans-serif;
+      font-size: 14px; padding: 14px 16px;
+      outline: none; transition: border-color .2s;
+      appearance: none;
+    }
+    .field input:focus, .field select:focus {
+      border-color: var(--blue);
+    }
+    .field input::placeholder { color: rgba(255,255,255,0.2); }
+    .field select option { background: #0d1b3e; color: #fff; }
+
+    .title-field { margin-bottom: 16px; }
+    .title-field input {
+      width: 100%; font-size: 15px; padding: 16px;
+    }
+
+    .btn-generate {
+      width: 100%; padding: 18px;
+      background: var(--blue); color: #fff;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px; letter-spacing: 0.1em;
+      border: none; cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-generate:hover { background: #60a5fa; }
+    .btn-generate:disabled { background: rgba(59,130,246,0.3); cursor: not-allowed; }
+
+    /* RESULT */
+    .result {
+      max-width: 900px; margin: 0 auto 80px;
+      padding: 0 24px;
+      display: none;
+    }
+    .result.visible { display: block; }
+
+    .result-label {
+      font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+      color: rgba(255,255,255,0.25); margin-bottom: 16px;
+    }
+
+    .thumb-wrap {
+      position: relative;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: #0a0a1a;
+      overflow: hidden;
+    }
+    .thumb-wrap img {
+      width: 100%; display: block;
+      aspect-ratio: 16/9; object-fit: cover;
+    }
+    .thumb-loading {
+      aspect-ratio: 16/9;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 16px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid rgba(59,130,246,0.2);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text {
+      font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+    }
+
+    .result-actions {
+      display: flex; gap: 12px; margin-top: 16px;
+    }
+    .btn-download {
+      flex: 1; padding: 14px;
+      background: var(--blue); color: #fff;
+      font-size: 12px; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; border: none; cursor: pointer;
+      text-decoration: none; text-align: center;
+      transition: all .2s;
+    }
+    .btn-download:hover { background: #60a5fa; }
+    .btn-regen {
+      padding: 14px 24px;
+      background: transparent; color: rgba(255,255,255,0.4);
+      font-size: 12px; font-weight: 600; letter-spacing: 0.12em;
+      text-transform: uppercase; border: 1px solid rgba(255,255,255,0.1);
+      cursor: pointer; transition: all .2s;
+    }
+    .btn-regen:hover { border-color: var(--blue); color: var(--blue); }
+
+    .error-msg {
+      margin-top: 16px; padding: 14px 16px;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #fca5a5; font-size: 13px;
+      display: none;
+    }
+    .error-msg.visible { display: block; }
+
+    /* HOW IT WORKS */
+    .how {
+      border-top: 1px solid rgba(255,255,255,0.06);
+      padding: 80px 40px;
+      max-width: 900px; margin: 0 auto;
+    }
+    .how-label {
+      font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase;
+      color: rgba(255,255,255,0.2); margin-bottom: 40px;
+    }
+    .how-steps {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px;
+    }
+    @media (max-width: 600px) { .how-steps { grid-template-columns: 1fr; } }
+    .how-step { }
+    .how-num {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 48px; color: rgba(59,130,246,0.2);
+      line-height: 1; margin-bottom: 12px;
+    }
+    .how-title {
+      font-size: 13px; font-weight: 600;
+      color: rgba(255,255,255,0.8); margin-bottom: 8px;
+    }
+    .how-desc {
+      font-size: 12px; color: rgba(255,255,255,0.3); line-height: 1.6;
+    }
+
+    /* FOOTER */
+    footer {
+      margin-top: auto;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      padding: 24px 40px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px;
+    }
+    .f-left { font-size: 11px; color: rgba(255,255,255,0.2); }
+    .f-brand {
+      font-family: 'Bebas Neue', sans-serif; font-size: 16px;
+      letter-spacing: 0.06em; text-decoration: none;
+    }
+    .f-brand .gr { color: rgba(255,255,255,0.5); }
+    .f-brand .n33 { color: var(--purple); }
+    .f-brand .mo { color: rgba(255,255,255,0.5); }
+    .f-brand .bb { color: var(--green); }
+    .f-right { font-size: 11px; color: rgba(255,255,255,0.2); }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-logo">THUMB<span>AI</span></div>
+    <div class="nav-tag">AI YouTube Thumbnail Generator</div>
+  </nav>
+
+  <section class="hero">
+    <h1>MAKE THEM<br><span class="t-blue">CLICK.</span></h1>
+    <p>Enter your video title, pick your style — ThumbAI generates a professional, high-converting YouTube thumbnail in seconds.</p>
+  </section>
+
+  <div class="form-wrap">
+    <div class="title-field field">
+      <label>Video Title</label>
+      <input type="text" id="title" placeholder="e.g. I Quit My Job and Made $10K in 30 Days" maxlength="120"/>
+    </div>
+    <div class="form-grid">
+      <div class="field">
+        <label>Channel Niche</label>
+        <select id="niche">
+          <option value="general">General</option>
+          <option value="gaming">Gaming</option>
+          <option value="tech">Tech</option>
+          <option value="lifestyle">Lifestyle</option>
+          <option value="business">Business / Finance</option>
+          <option value="fitness">Fitness</option>
+          <option value="finance">Money / Investing</option>
+          <option value="food">Food</option>
+          <option value="travel">Travel</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Thumbnail Style</label>
+        <select id="style">
+          <option value="bold">Bold & Hype</option>
+          <option value="viral">Viral / Shocking</option>
+          <option value="dark">Dark & Cinematic</option>
+          <option value="clean">Clean & Professional</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-generate" id="generateBtn" onclick="generate()">GENERATE THUMBNAIL</button>
+  </div>
+
+  <div class="result" id="result">
+    <div class="result-label">// Generated Thumbnail — 1280 × 720</div>
+    <div class="thumb-wrap" id="thumbWrap">
+      <div class="thumb-loading" id="thumbLoading">
+        <div class="spinner"></div>
+        <div class="loading-text">Generating your thumbnail...</div>
+      </div>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+    <div class="result-actions" id="resultActions" style="display:none">
+      <a class="btn-download" id="downloadBtn" download="thumbnail.jpg">Download Thumbnail</a>
+      <button class="btn-regen" onclick="generate()">Regenerate</button>
+    </div>
+  </div>
+
+  <div class="how" style="width:100%">
+    <div class="how-label">// How It Works</div>
+    <div class="how-steps">
+      <div class="how-step">
+        <div class="how-num">01</div>
+        <div class="how-title">Enter Your Title</div>
+        <div class="how-desc">Type your video title exactly how you'd say it. The more specific, the better the result.</div>
+      </div>
+      <div class="how-step">
+        <div class="how-num">02</div>
+        <div class="how-title">Pick Your Style</div>
+        <div class="how-desc">Choose your niche and the visual energy you want — bold, cinematic, clean, or viral.</div>
+      </div>
+      <div class="how-step">
+        <div class="how-num">03</div>
+        <div class="how-title">Download & Upload</div>
+        <div class="how-desc">AI generates a 1280×720 thumbnail in seconds. Download it and drop it straight into YouTube.</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="f-left">© 2024 ThumbAI — Powered by GR33KMoBB Media</div>
+    <a class="f-brand" href="https://iseeu.onrender.com/nexus" target="_blank" rel="noopener">
+      <span class="gr">GR</span><span class="n33">33</span><span class="mo">Mo</span><span class="bb">BB</span><span class="gr">.media</span>
+    </a>
+    <div class="f-right">Built by Damion Roy</div>
+  </footer>
+
+  <script>
+    let lastUrl = null;
+
+    async function generate() {
+      const title = document.getElementById('title').value.trim();
+      if (!title) {
+        document.getElementById('title').focus();
+        return;
+      }
+
+      const niche = document.getElementById('niche').value;
+      const style = document.getElementById('style').value;
+      const btn = document.getElementById('generateBtn');
+      const result = document.getElementById('result');
+      const thumbWrap = document.getElementById('thumbWrap');
+      const errorMsg = document.getElementById('errorMsg');
+      const resultActions = document.getElementById('resultActions');
+
+      btn.disabled = true;
+      btn.textContent = 'GENERATING...';
+      result.classList.add('visible');
+      errorMsg.classList.remove('visible');
+      resultActions.style.display = 'none';
+
+      // Reset to loading state
+      thumbWrap.innerHTML = `
+        <div class="thumb-loading" id="thumbLoading">
+          <div class="spinner"></div>
+          <div class="loading-text">Generating your thumbnail...</div>
+        </div>`;
+
+      try {
+        const resp = await fetch('/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, niche, style })
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Failed');
+
+        lastUrl = data.url;
+
+        // Load image
+        const img = new Image();
+        img.onload = () => {
+          thumbWrap.innerHTML = '';
+          img.style.width = '100%';
+          img.style.display = 'block';
+          thumbWrap.appendChild(img);
+          resultActions.style.display = 'flex';
+
+          const dl = document.getElementById('downloadBtn');
+          dl.href = lastUrl;
+          dl.download = `thumbai-${Date.now()}.jpg`;
+        };
+        img.onerror = () => {
+          throw new Error('Image failed to load');
+        };
+        img.src = lastUrl;
+
+      } catch (err) {
+        thumbWrap.innerHTML = '';
+        errorMsg.textContent = err.message || 'Something went wrong. Try again.';
+        errorMsg.classList.add('visible');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'GENERATE THUMBNAIL';
+        result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    document.getElementById('title').addEventListener('keydown', e => {
+      if (e.key === 'Enter') generate();
+    });
+  </script>
+</body>
+</html>
